@@ -15,8 +15,10 @@ class GarminLoader(BaseLoader):
         self.number_by_date_dict = defaultdict(float)
         self.garmin_user_name = kwargs.get("garmin_user_name", "")
         self.garmin_password = kwargs.get("garmin_password", "")
+        self.garmin_secret_string = kwargs.get("garmin_secret_string", "")
         self.is_cn = kwargs.get("cn", False)
         self.client = None
+        self.use_garth = False
 
     @classmethod
     def try_import_deps(cls):
@@ -34,18 +36,38 @@ class GarminLoader(BaseLoader):
             "--garmin_user_name",
             dest="garmin_user_name",
             type=str,
-            required=optional,
+            required=False,
             help="The username of Garmin",
         )
         parser.add_argument(
             "--garmin_password",
             dest="garmin_password",
             type=str,
-            required=optional,
+            required=False,
             help="The password of Garmin",
+        )
+        parser.add_argument(
+            "--garmin_secret_string",
+            dest="garmin_secret_string",
+            type=str,
+            required=False,
+            help="garth token secret string (from garth.client.dumps()), "
+            "avoids password login which Garmin blocks in CI",
         )
 
     def _get_access(self):
+        if self.garmin_secret_string:
+            import garth
+
+            if self.is_cn:
+                garth.configure(domain="garmin.cn")
+            garth.client.loads(self.garmin_secret_string)
+            if garth.client.oauth2_token.expired:
+                garth.client.refresh_oauth2()
+            self.client = garth.client
+            self.use_garth = True
+            return
+
         from garminconnect import Garmin
 
         try:
@@ -64,7 +86,13 @@ class GarminLoader(BaseLoader):
     def get_api_data(self, start=0, limit=100):
         if self.client is None:
             self._get_access()
-        activities = self.client.get_activities(start=start, limit=limit)
+        if self.use_garth:
+            activities = self.client.connectapi(
+                "/activitylist-service/activities/search/activities",
+                params={"start": start, "limit": limit},
+            )
+        else:
+            activities = self.client.get_activities(start=start, limit=limit)
         if activities:
             # maybe some other way to do this
             yield from activities

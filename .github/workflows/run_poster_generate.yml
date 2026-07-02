@@ -38,8 +38,8 @@ jobs:
       - name: Run sync garmin script
         if: contains(env.TYPE, 'garmin')
         run: |
-          python -m github_poster garmin --garmin_user_name "${{ secrets.GARMIN_EMAIL }}" --garmin_password "${{ secrets.GARMIN_PASSWORD }}" --me ${{ env.ME }} --year 2023-$(date +"%Y") --is-circular
-          python -m github_poster garmin --garmin_user_name "${{ secrets.GARMIN_EMAIL }}" --garmin_password "${{ secrets.GARMIN_PASSWORD }}" --me ${{ env.ME }} --year 2023-$(date +"%Y")
+          python -m github_poster garmin --garmin_secret_string "${{ secrets.GARMIN_SECRET_STRING }}" --me ${{ env.ME }} --year 2025-$(date +"%Y") --is-circular
+          python -m github_poster garmin --garmin_secret_string "${{ secrets.GARMIN_SECRET_STRING }}" --me ${{ env.ME }} --year 2025-$(date +"%Y")
 
       - name: Run sync strava script
         if: contains(env.TYPE, 'strava')
