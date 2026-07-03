@@ -37,6 +37,18 @@ jobs:
         run: |
           python -m github_poster ns --ns_session_token ${{ secrets.NS_SESSION_TOKEN }} --ns_device_id ${{ secrets.NS_DEVICE_ID }} --me ${{ env.ME }}
 
+      # Garmin rejects requests from GitHub runner IPs (429), route through WARP
+      - name: Install and connect Cloudflare WARP
+        if: contains(env.TYPE, 'garmin')
+        run: |
+          curl -fsSL https://pkg.cloudflareclient.com/pubkey.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cloudflare-warp-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/cloudflare-client.list
+          sudo apt-get update && sudo apt-get install -y cloudflare-warp
+          warp-cli --accept-tos registration new
+          warp-cli --accept-tos mode warp
+          warp-cli --accept-tos connect
+          sleep 3
+
       - name: Run sync garmin script
         if: contains(env.TYPE, 'garmin')
         run: |
@@ -129,6 +141,10 @@ jobs:
         # only for me to show
         if: github.repository_owner == 'yihong0618'
         run: mv OUT_FOLDER/*.svg examples/
+
+      - name: Disconnect Cloudflare WARP
+        if: contains(env.TYPE, 'garmin')
+        run: warp-cli --accept-tos disconnect
 
       - name: Push new postger
         run: |
